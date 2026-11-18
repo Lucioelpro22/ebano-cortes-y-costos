@@ -23,7 +23,7 @@ button{min-height:44px;cursor:pointer;font-weight:600}button:hover{background:#e
 <label>Espesor (mm)<input required type="number" step="any" min="0"></label>
 <label>Precio por m² (ARS)<input required type="number" step="any" min="0"></label>
 <label>Tapacanto por metro (ARS)<input required type="number" step="any" min="0"></label>
-<label>Herrajes (ARS)<input required type="number" step="any" min="0"></label><div class="actions"><button>Guardar</button><button type="button" id="cancel" hidden>Cancelar edición</button></div></form><p id="status" role="status"></p><div class="toolbar" id="history"><h2>Módulos guardados</h2><label>Buscar un registro<input id="search" type="search"></label></div><p id="empty"></p><section></section></main><script>
+<label>Herrajes (ARS)<input required type="number" step="any" min="0"></label><label>Módulos iguales<input type="number" value="1" min="1" max="1000" step="1" required></label><label>Merma de compra (%)<input type="number" value="0" min="0" max="100" step=".1" required></label><div class="actions"><button>Guardar</button><button type="button" id="cancel" hidden>Cancelar edición</button></div></form><p id="status" role="status"></p><div class="toolbar" id="history"><h2>Módulos guardados</h2><label>Buscar un registro<input id="search" type="search"></label></div><p id="empty"></p><section></section></main><script>
 const key='ebano-cortes-y-costos-v1';
 const form=document.querySelector('form');
 const controls=[...form.querySelectorAll('input,select')];
@@ -34,7 +34,17 @@ let rows=JSON.parse(localStorage.getItem(key)||'[]');
 let editing=-1;
 function describe(v){
   const n=i=>Number(v[i]);
-  const ancho=n(1)-2*n(4), alto=n(2), fondo=n(3); if(Math.min(ancho,alto-2*n(4),fondo,n(4))<=0) throw Error('Revisá las medidas del módulo.'); const area=2*(alto+ancho)*fondo/1e6, canto=2*(alto+ancho)/1000; return [v[0],`Laterales: 2 de ${alto} × ${fondo} mm`,`Tapa y base: 2 de ${ancho} × ${fondo} mm`,`Placa neta ${area.toFixed(3)} m² · Canto frontal ${canto.toFixed(2)} m`,`Costo neto sin merma ni fondo: ${money(area*n(5)+canto*n(6)+n(7))}`]
+  const ancho=n(1)-2*n(4),alto=n(2),fondo=n(3);
+  if(Math.min(ancho,alto-2*n(4),fondo,n(4))<=0)throw Error('Revisá las medidas del módulo.');
+  const unidades=Number(v[8]??1),merma=Number(v[9]??0);
+  const area=unidades*2*(alto+ancho)*fondo/1e6;
+  const canto=unidades*2*(alto+ancho)/1000;
+  const factor=1+merma/100;
+  return [v[0]+' · '+unidades+' módulo(s)',
+    'Laterales: '+2*unidades+' de '+alto+' × '+fondo+' mm',
+    'Tapa y base: '+2*unidades+' de '+ancho+' × '+fondo+' mm',
+    'Neto: '+area.toFixed(3)+' m² y '+canto.toFixed(2)+' m de canto. Compra con '+merma+'% de merma: '+(area*factor).toFixed(3)+' m² y '+(canto*factor).toFixed(2)+' m de canto.',
+    'Costo estimado sin fondo: '+money((area*n(5)+canto*n(6))*factor+unidades*n(7))];
 }
 const cancel=document.querySelector('#cancel');
 function resetForm(){
@@ -68,7 +78,7 @@ function render(){
           editing=index;
           cancel.hidden=false;
           form.querySelector('button').textContent='Guardar cambios';
-          controls.forEach((input,i)=>input.value=row[i]);
+          controls.forEach((input,i)=>input.value=row[i]??input.defaultValue);
           controls[0].focus();
         }else{
           card.classList.add('print');

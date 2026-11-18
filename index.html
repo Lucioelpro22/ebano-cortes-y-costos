@@ -1,0 +1,65 @@
+<!doctype html><html lang="es-AR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ébano · Cortes y costos</title><style>
+*{box-sizing:border-box}body{font:16px Inter,system-ui;color:#18352f;background:#f2f4ec;max-width:800px;margin:auto;padding:24px}h1{font-size:clamp(32px,7vw,56px);letter-spacing:-.06em}form,article{background:white;padding:22px;border-radius:12px;margin-bottom:14px}form{display:grid;gap:14px}label{display:grid;gap:4px}input,select,button{font:inherit;padding:10px;border:1px solid #9daea7;border-radius:6px}button{background:#195343;color:white;cursor:pointer}p{white-space:pre-wrap}article button{margin-right:8px}@media print{form,button,#status,article:not(.print){display:none}body{background:white}}
+</style><main><h1>Ébano · Cortes y costos</h1><form><label>Módulo<input required maxlength="160"></label>
+<label>Ancho exterior (mm)<input required type="number" step="any" min="0"></label>
+<label>Alto exterior (mm)<input required type="number" step="any" min="0"></label>
+<label>Profundidad (mm)<input required type="number" step="any" min="0"></label>
+<label>Espesor (mm)<input required type="number" step="any" min="0"></label>
+<label>Precio por m² (ARS)<input required type="number" step="any" min="0"></label>
+<label>Tapacanto por metro (ARS)<input required type="number" step="any" min="0"></label>
+<label>Herrajes (ARS)<input required type="number" step="any" min="0"></label><button>Guardar</button></form><p id="status" role="status"></p><section></section></main><script>
+const key='ebano-cortes-y-costos-v1';
+const form=document.querySelector('form');
+const controls=[...form.querySelectorAll('input,select')];
+const list=document.querySelector('section');
+const statusText=document.querySelector('#status');
+const money=value=>value.toLocaleString('es-AR',{style:'currency',currency:'ARS'});
+let rows=JSON.parse(localStorage.getItem(key)||'[]');
+let editing=-1;
+function describe(v){
+  const n=i=>Number(v[i]);
+  const ancho=n(1)-2*n(4), alto=n(2), fondo=n(3); if(Math.min(ancho,alto-2*n(4),fondo,n(4))<=0) throw Error('Revisá las medidas del módulo.'); const area=2*(alto+ancho)*fondo/1e6, canto=2*(alto+ancho)/1000; return [v[0],`Laterales: 2 de ${alto} × ${fondo} mm`,`Tapa y base: 2 de ${ancho} × ${fondo} mm`,`Placa neta ${area.toFixed(3)} m² · Canto frontal ${canto.toFixed(2)} m`,`Costo neto ${money(area*n(5)+canto*n(6)+n(7))}`].join('\n')
+}
+function render(){
+  list.replaceChildren();
+  rows.forEach((row,index)=>{
+    const card=document.createElement('article');
+    const summary=document.createElement('p');
+    summary.textContent=describe(row);
+    card.append(summary);
+    for(const label of ['Editar','Imprimir / PDF']){
+      const button=document.createElement('button');
+      button.textContent=label;
+      button.onclick=()=>{
+        if(label==='Editar'){
+          editing=index;
+          controls.forEach((input,i)=>input.value=row[i]);
+          controls[0].focus();
+        }else{
+          card.classList.add('print');
+          window.print();
+          card.classList.remove('print');
+        }
+      };
+      card.append(button);
+    }
+    list.prepend(card);
+  });
+}
+form.onsubmit=event=>{
+  event.preventDefault();
+  const row=controls.map(input=>input.value.trim());
+  try{
+    describe(row);
+    const updated=rows.slice();
+    updated[editing<0?updated.length:editing]=row;
+    localStorage.setItem(key,JSON.stringify(updated));
+    rows=updated;
+    editing=-1;
+    form.reset();
+    render();
+    statusText.textContent='Guardado en este navegador.';
+  }catch(error){statusText.textContent=error.message}
+};
+render();
+</script></html>
